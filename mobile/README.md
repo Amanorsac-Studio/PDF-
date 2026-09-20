@@ -33,8 +33,11 @@ mobile/
     screens/               Library, Scan, Review screens
     lib/                   pdf.ts (pdf-lib PDF assembly), imageOps.ts, library.ts (AsyncStorage index)
     theme/                 light/dark palette
-  .github/workflows/testflight.yml   CI: EAS build + submit to TestFlight
 ```
+
+CI workflow lives at the repo root: `.github/workflows/testflight.yml` (GitHub
+only discovers workflows there, not in a subfolder) — it scopes its steps to
+this `mobile/` directory.
 
 ## Local development
 
@@ -53,53 +56,42 @@ eas build --profile development --platform ios   # or --platform android
 
 ## Shipping to TestFlight
 
-This repo ships a GitHub Actions workflow
-(`mobile/.github/workflows/testflight.yml`) that builds the iOS app with EAS and
-submits it straight to TestFlight. It runs on push to `main` (when `mobile/**`
-changes), on tags matching `mobile-v*`, or manually via **Actions → EazyScanner -
-Build & Submit to TestFlight → Run workflow**.
+This repo ships a GitHub Actions workflow (`.github/workflows/testflight.yml`,
+scoped to `mobile/`) that builds the iOS app with EAS and submits it straight
+to TestFlight. It runs on push to `main` (when `mobile/**` changes), on tags
+matching `mobile-v*`, or manually via **Actions → EazyScanner - Build & Submit
+to TestFlight → Run workflow**.
 
-### One-time setup (required before the workflow can run)
+### Secrets it needs
 
-These steps need an Expo account and an Apple Developer Program membership —
-they can't be done from inside this session, so do them once yourself:
+| Secret | Value | Likely already in the org? |
+|---|---|---|
+| `APPLE_TEAM_ID` | Apple Developer Team ID | Yes — same team as other Amanorsac Studio apps |
+| `ASC_KEY_ID` | App Store Connect API key's Key ID | Yes, if reusing an existing ASC API key |
+| `ASC_ISSUER_ID` | App Store Connect Issuer ID (UUID) | Yes, if reusing an existing ASC API key |
+| `ASC_KEY_P8` | contents of the `AuthKey_XXXXXXXX.p8` file (raw text or base64 — the workflow detects either) | Yes, if reusing an existing ASC API key |
+| `ASC_APP_ID` | **this app's** numeric Apple ID (App Store Connect → this app → App Information) | **No — always new per app.** EazyScanner needs its own, once it's registered in App Store Connect under bundle id `com.amanorsac.eazyscanner` |
+| `EXPO_TOKEN` | an Expo access token (expo.dev → account → Settings → Access Tokens) | Only if EAS/Expo has been used for a prior app in this org — otherwise new |
 
-1. **Create/link the EAS project**
-   ```bash
-   cd mobile
-   npx eas-cli login
-   npx eas-cli init          # creates the project, fills in app.json > expo.extra.eas.projectId
-   ```
-   Commit the resulting `app.json` change.
+If an org-wide App Store Connect API key already exists (reused across
+Amanorsac products per the macOS signing standard's convention), only
+`ASC_APP_ID` and possibly `EXPO_TOKEN` need adding for this app specifically.
+Repo secrets take priority over an org secret of the same name if you need to
+override one just for this repo.
 
-2. **Create an Expo access token** for CI: https://expo.dev/accounts/[account]/settings/access-tokens
-   → add it as the repo or org secret **`EXPO_TOKEN`**.
+One more one-time step, local only (no secret involved):
 
-3. **Register the app in App Store Connect** (bundle id `com.amanorsac.eazyscanner`),
-   then create an **App Store Connect API key**
-   (App Store Connect → Users and Access → Integrations → App Store Connect API,
-   role "App Manager" or above). Download the `.p8` file — Apple only lets you
-   download it once.
+```bash
+cd mobile
+npx eas-cli login
+npx eas-cli init          # creates the EAS project, fills in app.json > expo.extra.eas.projectId
+```
+Commit the resulting `app.json` change — it's currently a placeholder.
 
-4. **Add these as repository or organization secrets** (Settings → Secrets and
-   variables → Actions):
-
-   | Secret | Value |
-   |---|---|
-   | `EXPO_TOKEN` | the Expo access token from step 2 |
-   | `ASC_API_KEY_P8` | full contents of the `.p8` file from step 3 |
-   | `ASC_KEY_ID` | the API key's Key ID (App Store Connect → Integrations) |
-   | `ASC_ISSUER_ID` | your App Store Connect Issuer ID |
-   | `ASC_APP_ID` | the app's Apple ID / ASC App ID (numeric, found on the app's App Store Connect page under App Information) |
-   | `APPLE_TEAM_ID` | your Apple Developer Team ID |
-
-   Org-level secrets work as-is (they're just referenced by name) — no repo-level
-   duplication needed as long as this repo is included in the org secret's access list.
-
-5. Push to `main` (or run the workflow manually). The workflow builds a
-   production iOS binary on Expo's build servers and submits it to TestFlight;
-   it becomes available to internal testers a few minutes after Apple finishes
-   processing.
+Push to `main` (or run the workflow manually) once the secrets are in place.
+The workflow builds a production iOS binary on Expo's build servers and
+submits it to TestFlight; it becomes available to internal testers a few
+minutes after Apple finishes processing.
 
 No Apple credentials or private keys are stored in this repo — the workflow
 writes the `.p8` key to a temp file for the submit step only and removes it
