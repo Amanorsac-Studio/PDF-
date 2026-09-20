@@ -1,0 +1,88 @@
+name: EazyScanner - Build & Submit to TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile'
+        required: false
+        default: 'production'
+        type: choice
+        options: [production, preview]
+  push:
+    branches: [main]
+    tags: ['mobile-v*']
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/testflight.yml'
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  build-and-submit:
+    name: Build iOS and submit to TestFlight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Verify required secrets are present
+        run: |
+          missing=0
+          for name in EXPO_TOKEN ASC_APP_ID APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_API_KEY_P8; do
+            value="${!name}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Add the missing secrets under this repository's (or organization's) Settings > Secrets and variables > Actions, then re-run."
+            exit 1
+          fi
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+
+      - name: Write App Store Connect API key
+        run: printf '%s' "$ASC_API_KEY_P8" > asc-api-key.p8
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+
+      - name: EAS build (iOS)
+        run: eas build --platform ios --profile "${{ inputs.profile || 'production' }}" --non-interactive --no-wait=false
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: EAS submit to TestFlight
+        run: eas submit --platform ios --profile "${{ inputs.profile || 'production' }}" --latest --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+
+      - name: Clean up API key
+        if: always()
+        run: rm -f asc-api-key.p8
