@@ -45,7 +45,7 @@ jobs:
       - name: Verify required secrets are present
         run: |
           missing=0
-          for name in EXPO_TOKEN ASC_APP_ID APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_API_KEY_P8; do
+          for name in EXPO_TOKEN ASC_APP_ID APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
             value="${!name}"
             if [ -z "$value" ]; then
               echo "::error::Missing required secret: $name"
@@ -62,12 +62,19 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
 
       - name: Write App Store Connect API key
-        run: printf '%s' "$ASC_API_KEY_P8" > asc-api-key.p8
+        # ASC_KEY_P8 is stored as either raw .p8 text or base64 of it (org convention
+        # per the macOS signing standard) - detect which and write the real key either way.
+        run: |
+          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s' "$ASC_KEY_P8" > asc-api-key.p8
+          else
+            printf '%s' "$ASC_KEY_P8" | tr -d '[:space:]' | base64 --decode > asc-api-key.p8
+          fi
         env:
-          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
 
       - name: EAS build (iOS)
         run: eas build --platform ios --profile "${{ inputs.profile || 'production' }}" --non-interactive --no-wait=false
