@@ -13,11 +13,14 @@ Built with Expo + React Native.
 ## Features
 
 - **Scan** — native document-edge detection and perspective crop, multi-page in one session
-- **Import photos** — turn existing pictures into a PDF
+- **Take photo** — plain in-app camera capture (continuous, snap as many pages as you need, then Done)
+- **Import photos** — turn existing pictures into a PDF, up to 1000 at once
 - **Review** — reorder, rotate, and remove pages before exporting
 - **Library** — every exported PDF is saved on-device, renamable, searchable by title, shareable, deletable
 - **Share/export** — hands the PDF to the OS share sheet (AirDrop, Mail, Files, Drive, etc.)
 - Light/dark mode, no account required, everything processed on-device (no uploads)
+
+No license file is included in this app; it's not published under one.
 
 ## Project layout
 

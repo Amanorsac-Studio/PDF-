@@ -22,11 +22,14 @@ import { useTheme } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Library'>;
 
+const MAX_GALLERY_SELECTION = 1000;
+
 export default function LibraryScreen({ navigation }: Props) {
   const theme = useTheme();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameText, setRenameText] = useState('');
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
 
   const refresh = useCallback(() => {
     listDocuments().then(setDocuments);
@@ -45,23 +48,29 @@ export default function LibraryScreen({ navigation }: Props) {
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 1,
-      selectionLimit: 0,
+      selectionLimit: MAX_GALLERY_SELECTION,
     });
 
     if (result.canceled || result.assets.length === 0) return;
 
     const pages: ScanPage[] = [];
-    for (const asset of result.assets) {
-      const id = Crypto.randomUUID();
-      const { uri, width, height } = await persistCapture(asset.uri, id);
-      pages.push({
-        id,
-        uri,
-        originalUri: uri,
-        rotation: 0,
-        width: asset.width || width,
-        height: asset.height || height,
-      });
+    setImportProgress({ done: 0, total: result.assets.length });
+    try {
+      for (const asset of result.assets) {
+        const id = Crypto.randomUUID();
+        const { uri, width, height } = await persistCapture(asset.uri, id);
+        pages.push({
+          id,
+          uri,
+          originalUri: uri,
+          rotation: 0,
+          width: asset.width || width,
+          height: asset.height || height,
+        });
+        setImportProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : prev));
+      }
+    } finally {
+      setImportProgress(null);
     }
 
     navigation.navigate('Review', { pages });
@@ -125,11 +134,27 @@ export default function LibraryScreen({ navigation }: Props) {
         </Pressable>
         <Pressable
           style={[styles.secondaryAction, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
-          onPress={handleImportPhotos}
+          onPress={() => navigation.navigate('Camera')}
         >
-          <Text style={[styles.secondaryActionText, { color: theme.text }]}>🖼  Import photos</Text>
+          <Text style={[styles.secondaryActionText, { color: theme.text }]}>📸  Take photo</Text>
         </Pressable>
       </View>
+      <Pressable
+        style={[styles.fullWidthAction, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
+        onPress={handleImportPhotos}
+      >
+        <Text style={[styles.secondaryActionText, { color: theme.text }]}>
+          🖼  Import photos from gallery (up to {MAX_GALLERY_SELECTION})
+        </Text>
+      </Pressable>
+
+      {importProgress && (
+        <View style={[styles.progressBanner, { backgroundColor: theme.accentSoft }]}>
+          <Text style={[styles.progressText, { color: theme.accent }]}>
+            Importing {importProgress.done} of {importProgress.total}…
+          </Text>
+        </View>
+      )}
 
       <FlatList
         data={documents}
@@ -190,11 +215,14 @@ const styles = StyleSheet.create({
   header: { marginBottom: 20 },
   title: { fontSize: 28, fontWeight: '700' },
   subtitle: { fontSize: 14, marginTop: 4 },
-  actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   primaryAction: { flex: 1, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   primaryActionText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   secondaryAction: { flex: 1, borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1 },
   secondaryActionText: { fontSize: 15, fontWeight: '600' },
+  fullWidthAction: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', borderWidth: 1, marginBottom: 12 },
+  progressBanner: { borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12 },
+  progressText: { fontSize: 13, fontWeight: '600' },
   listContent: { paddingBottom: 40 },
   empty: { textAlign: 'center', marginTop: 60, fontSize: 14 },
   card: {

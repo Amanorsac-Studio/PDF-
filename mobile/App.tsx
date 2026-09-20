@@ -8,6 +8,7 @@ import { useColorScheme } from 'react-native';
 import { RootStackParamList } from './src/lib/navigation';
 import LibraryScreen from './src/screens/LibraryScreen';
 import ScanScreen from './src/screens/ScanScreen';
+import CameraScreen from './src/screens/CameraScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -21,6 +22,7 @@ export default function App() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Library" component={LibraryScreen} />
           <Stack.Screen name="Scan" component={ScanScreen} options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="Camera" component={CameraScreen} options={{ presentation: 'fullScreenModal' }} />
           <Stack.Screen name="Review" component={ReviewScreen} options={{ presentation: 'modal' }} />
         </Stack.Navigator>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />

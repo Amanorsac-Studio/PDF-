@@ -11,18 +11,31 @@ export async function ensureScansDir(): Promise<void> {
   }
 }
 
-/** Copies a freshly captured/picked image into app storage so it survives cache clears. */
+/** Long-edge cap for persisted pages: plenty for a crisp printed/exported PDF page,
+ * while keeping a 1000-photo import fast and the resulting PDF a sane size. */
+const MAX_DIMENSION = 2200;
+
+/**
+ * Copies a freshly captured/picked image into app storage (so it survives
+ * cache clears) and downscales it if it's larger than we need.
+ */
 export async function persistCapture(sourceUri: string, id: string): Promise<{ uri: string; width: number; height: number }> {
   await ensureScansDir();
   const dest = `${SCANS_DIR}${id}.jpg`;
-  await FileSystem.copyAsync({ from: sourceUri, to: dest });
-  const { width, height } = await getImageSize(dest);
-  return { uri: dest, width, height };
-}
 
-async function getImageSize(uri: string): Promise<{ width: number; height: number }> {
-  const result = await ImageManipulator.manipulateAsync(uri, [], { compress: 1 });
-  return { width: result.width, height: result.height };
+  const probe = await ImageManipulator.manipulateAsync(sourceUri, [], { compress: 1 });
+  const longEdge = Math.max(probe.width, probe.height);
+  const actions =
+    longEdge > MAX_DIMENSION
+      ? [probe.width >= probe.height ? { resize: { width: MAX_DIMENSION } } : { resize: { height: MAX_DIMENSION } }]
+      : [];
+
+  const result = await ImageManipulator.manipulateAsync(sourceUri, actions, {
+    compress: 0.85,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  await FileSystem.copyAsync({ from: result.uri, to: dest });
+  return { uri: dest, width: result.width, height: result.height };
 }
 
 /** Rotates a page 90 degrees clockwise, always re-deriving from the original capture. */
