@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "EazyScanner",
+    "slug": "eazyscanner",
+    "scheme": "eazyscanner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.amanorsac.eazyscanner",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "EazyScanner uses the camera to scan documents, receipts, and ID cards into PDFs.",
+        "NSPhotoLibraryUsageDescription": "EazyScanner can turn photos from your library into PDFs and can save exported PDFs back to your library.",
+        "NSPhotoLibraryAddUsageDescription": "EazyScanner saves exported PDFs and images to your photo library when you choose to."
+      }
+    },
+    "android": {
+      "package": "com.amanorsac.eazyscanner",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0B5FFF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "EazyScanner uses the camera to scan documents, receipts, and ID cards into PDFs."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "EazyScanner can turn photos from your library into PDFs."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "EazyScanner saves exported PDFs and images to your photo library when you choose to.",
+          "savePhotosPermission": "EazyScanner saves exported PDFs and images to your photo library when you choose to.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "react-native-document-scanner-plugin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
